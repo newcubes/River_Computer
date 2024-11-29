@@ -1,5 +1,7 @@
 import requests
 from Adafruit_DHT import read_retry, DHT11
+from ambient_api.ambientapi import AmbientAPI
+from time import sleep
 
 # API Keys and Constants
 OPENWEATHERMAP_API_KEY = 'your_openweathermap_api_key'
@@ -10,20 +12,55 @@ MOON_PHASE_API_URL = f"http://api.openweathermap.org/data/2.5/onecall?lat=40.719
 # Sensor Constants
 DHT_PIN = 16  # GPIO pin for DHT11 sensor
 
-def breeze():
+def getWeather():
+    """
+    Gets weather data from the Ambient Weather station.
+    Returns: Dictionary containing weather data with descriptive keys.
+    """
+    api = AmbientAPI()
+    devices = api.get_devices()
+    device = devices[0]
+    sleep(1)
+    reports = device.get_data()
+    report = reports[0]
+    
+    return {
+        'indoor': {
+            'temperature': report['tempinf'],
+            'humidity': report['humidityin']
+        },
+        'outdoor': {
+            'temperature': report['tempf'],
+            'humidity': report['humidity']
+        },
+        'wind': {
+            'direction': report['winddir'],
+            'speed': report['windspeedmph'],
+            'gust': report['windgustmph']
+        },
+        'rain': {
+            'hourly': report['hourlyrainin']
+        },
+        'solar': {
+            'radiation': report['solarradiation'],
+            'uv': report['uv']
+        }
+    }
+
+def getBreeze():
     """
     Reads wind speed and direction from a direct sensor and triggers a subfunction if the breeze is north.
     """
     def wind_action():
         """
         Subfunction triggered when the breeze is north.
-        Placeholder: Perform an action with the DAO (Data Access Object).
+        Placeholder: Perform an action in DAODAO.
         """
         print("Wind is blowing from the north. Executing wind_action with the DAO...")
 
-    # Simulate wind sensor reading (replace with actual sensor code as needed)
-    wind_speed = 5.0  # Example wind speed in m/s
-    wind_direction = 5  # Example wind direction in degrees
+    weather = getWeather()
+    wind_speed = weather['wind']['speed']
+    wind_direction = weather['wind']['direction']
 
     # Check if wind direction is approximately north (0 degrees ± 10 degrees)
     if abs(wind_direction - 0) <= 10 or abs(wind_direction - 360) <= 10:
@@ -32,8 +69,7 @@ def breeze():
     else:
         print(f"Breeze detected: Speed = {wind_speed} m/s, Direction = {wind_direction}° (Not North)")
 
-
-def tides():
+def getTides():
     """
     Fetches data from the NOAA Tides API to check if the closest tide is high.
     """
@@ -50,7 +86,6 @@ def tides():
         water_level = float(data['data'][0]['v'])
         print(f"Current water level: {water_level} meters")
 
-        # Placeholder condition: Assume high tide if water level exceeds a threshold
         if water_level > 1.5:
             tide_action()
         else:
@@ -58,8 +93,7 @@ def tides():
     else:
         print(f"Error: Unable to fetch tide data (Status code: {response.status_code})")
 
-
-def sun():
+def getSun():
     """
     Uses the OpenWeatherMap API to check if the sun is shining on the sensor.
     """
@@ -77,7 +111,6 @@ def sun():
         sunset = data['sys']['sunset']
         current_time = data['dt']
 
-        # Check if current time is between sunrise and sunset
         if sunrise < current_time < sunset:
             print("The sun is shining.")
             sun_action()
@@ -86,8 +119,7 @@ def sun():
     else:
         print(f"Error: Unable to fetch sun data (Status code: {response.status_code})")
 
-
-def moon():
+def getMoon():
     """
     Uses the OpenWeatherMap OneCall API to check if the moon is full or if there's an eclipse tonight.
     """
@@ -108,16 +140,14 @@ def moon():
     response = requests.get(MOON_PHASE_API_URL)
     if response.status_code == 200:
         data = response.json()
-        moon_phase = data['daily'][0]['moon_phase']  # Value between 0.0 and 1.0 (0.5 = full moon)
+        moon_phase = data['daily'][0]['moon_phase']
 
-        # Check for full moon
         if 0.45 <= moon_phase <= 0.55:
             print("The moon is full.")
             full_moon_action()
         else:
             print("The moon is not full.")
 
-        # Placeholder condition for eclipse (modify as needed for real data)
         is_eclipse_tonight = False
         if is_eclipse_tonight:
             eclipse_action()
