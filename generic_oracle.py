@@ -1,3 +1,5 @@
+# Austin Wade Smith - 2023
+
 import requests
 from Adafruit_DHT import read_retry, DHT11
 from ambient_api.ambientapi import AmbientAPI
