@@ -1,7 +1,10 @@
-from flask import Flask, jsonify
-from ambient_api.ambientapi import AmbientAPI
+from flask import Flask, request, jsonify
 import os
 import time
+import bech32
+import json
+from dotenv import load_dotenv
+from ambient_api.ambientapi import AmbientAPI
 
 app = Flask(__name__)
 
@@ -40,6 +43,29 @@ def get_wind_data():
         })
     else:
         return jsonify({"error": "No data available."}), 404
+
+@app.route('/join', methods=['POST'])
+def join():
+    address = request.get_json(force=True)['address']
+    try:
+        hrp, data = bech32.bech32_decode(address)
+        if hrp is None or hrp != "neutron" or data is None:
+            raise Exception("Invalid address")
+    except Exception as e:
+        return jsonify({"error": "Invalid address"}), 401
+
+    add_member_payload = json.dumps({
+        "update_members": {
+            "add": [{
+                "weight": 1,
+                "addr": address
+            }],
+            "remove": []
+        }
+    })
+    add_member_tx = json.loads(os.popen(f"/home/river/.local/bin/neutrond tx wasm execute neutron1hstf985wqeqgxtg99e8pm99gzmguxwyzywunk5ntx3ksjejccwcqsdwwjf '{add_member_payload}' --generate-only --from neutron1hvdx9p56hz8m2604ls8ss3j4u8nxx8ju6kjvf7hewf7p87cksxpq3pllfs").read())
+
+    return jsonify({"tx":add_member_tx})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000)
