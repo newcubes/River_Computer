@@ -54,6 +54,12 @@ def join():
     except Exception as e:
         return jsonify({"error": "Invalid address"}), 401
 
+    neutrond_bin = "/home/river/.local/bin/neutrond"
+    wind_trust_contract_cw4 = "neutron1hstf985wqeqgxtg99e8pm99gzmguxwyzywunk5ntx3ksjejccwcqsdwwjf"
+    wind_trust_dao_contract = "neutron1hvdx9p56hz8m2604ls8ss3j4u8nxx8ju6kjvf7hewf7p87cksxpq3pllfs"
+    river_computer_dao_contract = "neutron15078ks644a6pxmknyhqkkpgackggxcm47zgkzu4lkwcnwp9gwh6q6xmegw"
+
+    # authz exec via wind trust
     add_member_payload = json.dumps({
         "update_members": {
             "add": [{
@@ -63,9 +69,28 @@ def join():
             "remove": []
         }
     })
-    add_member_tx = json.loads(os.popen(f"/home/river/.local/bin/neutrond tx wasm execute neutron1hstf985wqeqgxtg99e8pm99gzmguxwyzywunk5ntx3ksjejccwcqsdwwjf '{add_member_payload}' --generate-only --from neutron1hvdx9p56hz8m2604ls8ss3j4u8nxx8ju6kjvf7hewf7p87cksxpq3pllfs").read())
+    add_member_tx = json.loads(os.popen(f"{neutrond_bin} tx wasm execute {wind_trust_contract_cw4} '{add_member_payload}' --generate-only --from {wind_trust_dao_contract}").read())
 
-    return jsonify({"tx":add_member_tx})
+    # authz exec via river computer
+    spend_tx = json.loads(os.popen(f"{neutrond_bin} tx bank send {river_computer_dao_contract} {address} 1untrn --generate-only --from {river_computer_dao_contract}").read())
+    fee_grant_tx = json.loads(os.popen(f"{neutrond_bin} tx feegrant grant {river_computer_dao_contract} {address} --generate-only --from {river_computer_dao_contract}").read())
+
+    full_tx_pre_authz = add_member_tx
+    full_tx_pre_authz['body']['messages'].append(
+        spend_tx['body']['messages'][0]
+    )
+    full_tx_pre_authz['body']['messages'].append(
+        fee_grant_tx['body']['messages'][0]
+    )
+
+    # for now, don't execute
+    return jsonify(full_tx_pre_authz)
+
+    ## EXECUTE ON CHAIN
+
+    # authz_exec_tx_submission = os.popen(f"echo '{json.dumps(full_tx_pre_authz)}' | {neutrond_bin} tx authz exec /dev/stdin --from wind --fee-granter {river_computer_dao_contract} --gas auto --gas-prices 0.01untrn --gas-adjustment 1.5 --broadcast-mode sync --output json --yes 2>&1").read()
+
+    # return jsonify(authz_exec_tx_submission)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000)
