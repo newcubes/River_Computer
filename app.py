@@ -3,10 +3,22 @@ import os
 import time
 import bech32
 import json
+import requests
 from dotenv import load_dotenv
+from geographiclib.geodesic import Geodesic
+
+load_dotenv()
+
 from ambient_api.ambientapi import AmbientAPI
 
 app = Flask(__name__)
+
+wind_trust_dao_contract = "neutron1hvdx9p56hz8m2604ls8ss3j4u8nxx8ju6kjvf7hewf7p87cksxpq3pllfs"
+
+def get_config():
+    res = requests.get(f"https://indexer.daodao.zone/neutron-1/contract/{wind_trust_dao_contract}/daoCore/listItems")
+    res.raise_for_status()
+    return dict(res.json())
 
 @app.route('/', methods=['GET'])
 def home():
@@ -19,7 +31,7 @@ def get_wind_data():
     app_key = os.getenv('AMBIENT_APPLICATION_KEY')
 
     # Initialize the AmbientAPI with the API keys
-    api = AmbientAPI(api_key=api_key, application_key=app_key)
+    api = AmbientAPI(AMBIENT_API_KEY=api_key, AMBIENT_APPLICATION_KEY=app_key)
 
     devices = api.get_devices()
 
@@ -37,9 +49,26 @@ def get_wind_data():
         wind_direction = latest_data.get('winddir', 'N/A')
         wind_speed = latest_data.get('windspeedmph', 'N/A')
 
+        config = get_config()
+        threshold_percent = float(config['azimuth_threshold_percent'])
+        destination_coords = [float(coord) for coord in config['destination_coordinates'].split(',')]
+
+        # from position of device to desired destination
+        device_coords = [40.687668, -73.955505]
+        azimuth = (Geodesic.WGS84.Inverse(*device_coords, *destination_coords)['azi1'] + 360) % 360
+
+        threshold_delta = threshold_percent / 100 * 90
+        azimuth_lower_bound = azimuth - threshold_delta + threshold_delta
+        azimuth_upper_bound = azimuth + threshold_delta + threshold_delta
+        is_open = azimuth_lower_bound <= wind_direction + threshold_delta and azimuth_upper_bound >= wind_direction + threshold_delta
+
         return jsonify({
             "wind_direction": wind_direction,
-            "wind_speed": wind_speed
+            "wind_speed": wind_speed,
+            "destination": destination_coords,
+            "azimuth": azimuth,
+            "threshold_percent": threshold_percent,
+            "is_open": is_open
         })
     else:
         return jsonify({"error": "No data available."}), 404
@@ -56,7 +85,6 @@ def join():
 
     neutrond_bin = "/home/river/.local/bin/neutrond"
     wind_trust_contract_cw4 = "neutron1hstf985wqeqgxtg99e8pm99gzmguxwyzywunk5ntx3ksjejccwcqsdwwjf"
-    wind_trust_dao_contract = "neutron1hvdx9p56hz8m2604ls8ss3j4u8nxx8ju6kjvf7hewf7p87cksxpq3pllfs"
     river_computer_dao_contract = "neutron15078ks644a6pxmknyhqkkpgackggxcm47zgkzu4lkwcnwp9gwh6q6xmegw"
 
     # authz exec via wind trust
