@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory, render_template, redirect
 from flask_cors import CORS, cross_origin
 import os
 import time
@@ -12,7 +12,7 @@ load_dotenv()
 
 from ambient_api.ambientapi import AmbientAPI
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='frontend/out', static_url_path='/')
 cors = CORS(app)
 
 # Cache for storing the last successful wind data
@@ -25,11 +25,11 @@ def get_config():
     res.raise_for_status()
     return dict(res.json())
 
-@app.route('/', methods=['GET'])
-def home():
-    return "Welcome to River Computer"
+@app.route('/_next/<path:path>')
+def next_static(path):
+    return send_from_directory('frontend/out/_next', path)
 
-@app.route('/wind', methods=['GET'])
+@app.route('/api/wind', methods=['GET'])
 @cross_origin()
 def get_wind_data():
     global wind_data_cache
@@ -96,7 +96,7 @@ def get_wind_data():
             return jsonify(wind_data_cache), 200
         return jsonify({"error": f"Failed to get wind data: {str(e)}"}), 500
 
-@app.route('/join', methods=['POST'])
+@app.route('/api/join', methods=['POST'])
 @cross_origin()
 def join():
     address = request.get_json(force=True)['address']
@@ -138,11 +138,38 @@ def join():
     # for now, don't execute
     return jsonify(full_tx_pre_authz)
 
-    ## EXECUTE ON CHAIN
-
-    # authz_exec_tx_submission = os.popen(f"echo '{json.dumps(full_tx_pre_authz)}' | {neutrond_bin} tx authz exec /dev/stdin --from wind --fee-granter {river_computer_dao_contract} --gas auto --gas-prices 0.01untrn --gas-adjustment 1.5 --broadcast-mode sync --output json --yes 2>&1").read()
-
-    # return jsonify(authz_exec_tx_submission)
+# Serve Next.js static files
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_frontend(path):
+    if path.startswith('api/'):
+        return {"error": "Not found"}, 404
+    
+    # Check if path is a file that exists in the out directory
+    static_file_path = os.path.join('frontend/out', path)
+    if os.path.isfile(static_file_path):
+        return send_from_directory('frontend/out', path)
+    
+    # If path includes an extension but file doesn't exist, return 404
+    if '.' in path:
+        return {"error": "Not found"}, 404
+    
+    # For all other paths (routes), serve the index.html
+    if path and not path.endswith('/'):
+        # Redirect non-trailing slash routes to ones with trailing slash to match Next.js export format
+        return redirect(f'/{path}/')
+        
+    # Handle paths with trailing slash by appending index.html
+    if path.endswith('/'):
+        path = f"{path}index.html"
+    else:
+        path = f"{path}/index.html"
+    
+    try:
+        return send_from_directory('frontend/out', path)
+    except:
+        # If specific page not found, return the index.html page
+        return send_from_directory('frontend/out', 'index.html')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000)
