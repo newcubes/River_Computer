@@ -164,7 +164,7 @@ const Home = () => {
       console.log(`Joining with address ${account.bech32Address}`);
       
       // Call join route
-      const response = await fetch("http://167.172.135.195:8000/join", {
+      const response = await fetch("http://167.172.135.195:8000/api/join", {
         method: "POST",
         headers: {
           'Content-Type': 'application/json'
@@ -206,7 +206,7 @@ const Home = () => {
     const fetchWindData = async () => {
       try {
         // Fetch wind data from the provided API endpoint
-        const response = await fetch("http://167.172.135.195:8000/wind");
+        const response = await fetch("http://167.172.135.195:8000/api/wind");
 
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
