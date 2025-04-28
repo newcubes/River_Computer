@@ -15,6 +15,9 @@ from ambient_api.ambientapi import AmbientAPI
 app = Flask(__name__)
 cors = CORS(app)
 
+# Cache for storing the last successful wind data
+wind_data_cache = None
+
 wind_trust_dao_contract = "neutron1hvdx9p56hz8m2604ls8ss3j4u8nxx8ju6kjvf7hewf7p87cksxpq3pllfs"
 
 def get_config():
@@ -29,6 +32,8 @@ def home():
 @app.route('/wind', methods=['GET'])
 @cross_origin()
 def get_wind_data():
+    global wind_data_cache
+    
     # Retrieve API keys from environment variables
     api_key = os.getenv('AMBIENT_API_KEY')
     app_key = os.getenv('AMBIENT_APPLICATION_KEY')
@@ -36,45 +41,60 @@ def get_wind_data():
     # Initialize the AmbientAPI with the API keys
     api = AmbientAPI(AMBIENT_API_KEY=api_key, AMBIENT_APPLICATION_KEY=app_key)
 
-    devices = api.get_devices()
+    try:
+        devices = api.get_devices()
 
-    if not devices:
-        return jsonify({"error": "No devices found."}), 404
+        if not devices:
+            if wind_data_cache:
+                return jsonify(wind_data_cache), 200
+            return jsonify({"error": "No devices found and no cached data available."}), 404
 
-    device = devices[0]  # Get the first device
-    time.sleep(1)  # Pause for a second to avoid API limits
+        device = devices[0]  # Get the first device
+        time.sleep(1)  # Pause for a second to avoid API limits
 
-    # Get the latest data from the device
-    latest_data = device.get_data()
+        # Get the latest data from the device
+        latest_data = device.get_data()
 
-    if isinstance(latest_data, list) and len(latest_data) > 0:
-        latest_data = latest_data[0]  # Get the first item in the list
-        wind_direction = latest_data.get('winddir', 'N/A')
-        wind_speed = latest_data.get('windspeedmph', 'N/A')
+        if isinstance(latest_data, list) and len(latest_data) > 0:
+            latest_data = latest_data[0]  # Get the first item in the list
+            wind_direction = latest_data.get('winddir', 'N/A')
+            wind_speed = latest_data.get('windspeedmph', 'N/A')
 
-        config = get_config()
-        threshold_percent = float(config['azimuth_threshold_percent'])
-        destination_coords = [float(coord) for coord in config['destination_coordinates'].split(',')]
+            config = get_config()
+            threshold_percent = float(config['azimuth_threshold_percent'])
+            destination_coords = [float(coord) for coord in config['destination_coordinates'].split(',')]
 
-        # from position of device to desired destination
-        device_coords = [40.687668, -73.955505]
-        azimuth = (Geodesic.WGS84.Inverse(*device_coords, *destination_coords)['azi1'] + 360) % 360
+            # from position of device to desired destination
+            device_coords = [40.687668, -73.955505]
+            azimuth = (Geodesic.WGS84.Inverse(*device_coords, *destination_coords)['azi1'] + 360) % 360
 
-        threshold_delta = threshold_percent / 100 * 90
-        azimuth_lower_bound = azimuth - threshold_delta + threshold_delta
-        azimuth_upper_bound = azimuth + threshold_delta + threshold_delta
-        is_open = azimuth_lower_bound <= wind_direction + threshold_delta and azimuth_upper_bound >= wind_direction + threshold_delta
+            threshold_delta = threshold_percent / 100 * 90
+            azimuth_lower_bound = azimuth - threshold_delta + threshold_delta
+            azimuth_upper_bound = azimuth + threshold_delta + threshold_delta
+            is_open = azimuth_lower_bound <= wind_direction + threshold_delta and azimuth_upper_bound >= wind_direction + threshold_delta
 
-        return jsonify({
-            "wind_direction": wind_direction,
-            "wind_speed": wind_speed,
-            "destination": destination_coords,
-            "azimuth": azimuth,
-            "threshold_percent": threshold_percent,
-            "is_open": is_open
-        })
-    else:
-        return jsonify({"error": "No data available."}), 404
+            response_data = {
+                "wind_direction": wind_direction,
+                "wind_speed": wind_speed,
+                "destination": destination_coords,
+                "azimuth": azimuth,
+                "threshold_percent": threshold_percent,
+                "is_open": is_open
+            }
+            
+            # Update cache with the latest successful data
+            wind_data_cache = response_data
+            
+            return jsonify(response_data)
+        else:
+            if wind_data_cache:
+                return jsonify(wind_data_cache), 200
+            return jsonify({"error": "No data available and no cached data available."}), 404
+            
+    except Exception as e:
+        if wind_data_cache:
+            return jsonify(wind_data_cache), 200
+        return jsonify({"error": f"Failed to get wind data: {str(e)}"}), 500
 
 @app.route('/join', methods=['POST'])
 @cross_origin()
