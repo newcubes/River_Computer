@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS, cross_origin
 import os
 import time
 import bech32
@@ -12,6 +13,7 @@ load_dotenv()
 from ambient_api.ambientapi import AmbientAPI
 
 app = Flask(__name__)
+cors = CORS(app)
 
 wind_trust_dao_contract = "neutron1hvdx9p56hz8m2604ls8ss3j4u8nxx8ju6kjvf7hewf7p87cksxpq3pllfs"
 
@@ -25,6 +27,7 @@ def home():
     return "Welcome to River Computer"
 
 @app.route('/wind', methods=['GET'])
+@cross_origin()
 def get_wind_data():
     # Retrieve API keys from environment variables
     api_key = os.getenv('AMBIENT_API_KEY')
@@ -74,6 +77,7 @@ def get_wind_data():
         return jsonify({"error": "No data available."}), 404
 
 @app.route('/join', methods=['POST'])
+@cross_origin()
 def join():
     address = request.get_json(force=True)['address']
     try:
