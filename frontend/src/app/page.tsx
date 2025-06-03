@@ -76,65 +76,148 @@ interface JoinResponse {
 }
 
 // Wind direction arrow component using SVG
-const WindArrow = ({ direction }: { direction: number }) => {
+const WindArrow = ({ direction, isOpen }: { direction: number, isOpen: boolean }) => {
+  const strokeColor = isOpen ? "#3b82f6" : "#ef4444";
+  const gradientColor = isOpen ? "#3b82f6" : "#ef4444";
   return (
-    <div className="relative w-32 h-32">
+    <div
+      className="fixed inset-0 flex items-center justify-center pointer-events-none z-0"
+      style={{ overflow: "visible" }}
+    >
       <svg
-        viewBox="0 0 100 100"
-        className="w-full h-full"
-        style={{ transform: `rotate(${direction - 90}deg)` }}
+        width={2000}
+        height={1000}
+        viewBox="0 0 2000 1000"
+        className="block"
+        style={{ overflow: "visible" }}
       >
-        {/* Circle background */}
-        <circle
-          cx="50"
-          cy="50"
-          r="48"
-          fill="none"
-          stroke="#d1d5db"
-          strokeWidth="4"
-        />
+        <g transform="translate(1000,500) scale(0.3) translate(-1000,-500)">
+          <defs>
+            <radialGradient id="grad1" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+              <stop offset="0%" style={{ stopColor: gradientColor, stopOpacity: 1 }} />
+              <stop offset="100%" style={{ stopColor: gradientColor, stopOpacity: 0 }} />
+            </radialGradient>
+          </defs>
 
-        {/* Arrow */}
-        <g>
-          <line
-            x1="10"
-            y1="50"
-            x2="90"
-            y2="50"
-            stroke="#3b82f6"
-            strokeWidth="4"
-            strokeLinecap="round"
+          {/* Large circle with radial gradient */}
+          <circle
+            cx="1000"
+            cy="500"
+            r="300"
+            fill="url(#grad1)"
           />
-          <polygon
-            points="75,40 90,50 75,60"
-            fill="#3b82f6"
-            stroke="#3b82f6"
-            strokeWidth="1"
+
+          {/* flare_circle_1 */}
+          <circle
+            id="flare_circle_1"
+            cx="1000"
+            cy="500"
+            r="480"
+            fill="none"
+            stroke="white"
+            strokeWidth="2"
+            strokeDasharray="8,8"
+            opacity="0.3"
           />
+
+          {/* flare_circle_2 */}
+          <circle
+            id="flare_circle_2"
+            cx="1000"
+            cy="500"
+            r="720"
+            fill="none"
+            stroke="white"
+            strokeWidth="2"
+            strokeDasharray="8,8"
+            opacity="0.2"
+          />
+
+          {/* flare_circle_3 */}
+          <circle
+            id="flare_circle_3"
+            cx="1000"
+            cy="500"
+            r="1080"
+            fill="none"
+            stroke="white"
+            strokeWidth="2"
+            strokeDasharray="8,8"
+            opacity="0.15"
+          />
+
+          {/* flare_circle_4 */}
+          <circle
+            id="flare_circle_4"
+            cx="1000"
+            cy="500"
+            r="1188"
+            fill="none"
+            stroke="white"
+            strokeWidth="2"
+            strokeDasharray="8,8"
+            opacity="0.1"
+          />
+
+          {/* flare_circle_5 */}
+          <circle
+            id="flare_circle_5"
+            cx="1000"
+            cy="500"
+            r="1306.8"
+            fill="none"
+            stroke="white"
+            strokeWidth="2"
+            strokeDasharray="8,8"
+            opacity="0.07"
+          />
+
+          {/* flare_circle_6 */}
+          <circle
+            id="flare_circle_6"
+            cx="1000"
+            cy="500"
+            r="1437.48"
+            fill="none"
+            stroke="white"
+            strokeWidth="2"
+            strokeDasharray="8,8"
+            opacity="0.05"
+          />
+
+          {/* flare_circle_7 */}
+          <circle
+            id="flare_circle_7"
+            cx="1000"
+            cy="500"
+            r="1581.228"
+            fill="none"
+            stroke="white"
+            strokeWidth="2"
+            strokeDasharray="8,8"
+            opacity="0.03"
+          />
+
+          {/* Arrow */}
+          <g>
+            <line
+              x1="1000"
+              y1="500"
+              x2="1600"
+              y2="500"
+              stroke={strokeColor}
+              strokeWidth="4"
+              strokeLinecap="round"
+            />
+            <polygon
+              points="1530,440 1600,500 1530,560"
+              fill={strokeColor}
+              stroke={strokeColor}
+              strokeWidth="4"
+            />
+          </g>
         </g>
       </svg>
-    </div>
-  );
-};
-
-// Status indicator component
-const StatusIndicator = ({ isOpen }: { isOpen: boolean }) => {
-  return (
-    <div className="flex items-center gap-2">
-      <div
-        className={`w-4 h-4 rounded-full ${
-          isOpen ? "bg-green-500" : "bg-red-500"
-        }`}
-      ></div>
-      <span
-        className={`font-medium ${
-          isOpen
-            ? "text-green-600 dark:text-green-400"
-            : "text-red-600 dark:text-red-400"
-        }`}
-      >
-        {isOpen ? "Open" : "Closed"}
-      </span>
     </div>
   );
 };
@@ -152,6 +235,12 @@ const Home = () => {
   const [joinError, setJoinError] = useState<string | null>(null);
   const [dataReceived, setDataReceived] = useState(false);
   const [joiningWallet, setJoiningWallet] = useState(false);
+
+  // Initialize state for wind direction readings
+  const [windDirections, setWindDirections] = useState<number[]>([]);
+  const [currentDirection, setCurrentDirection] = useState<number>(0);
+  const [isAnimating, setIsAnimating] = useState<boolean>(true);
+  const [initialAnimationDone, setInitialAnimationDone] = useState<boolean>(false);
 
   // Function to handle join button click
   const handleJoin = async () => {
@@ -231,6 +320,13 @@ const Home = () => {
         if (!dataReceived) {
           setDataReceived(true);
         }
+
+        // Fetch data and update windDirections
+        const newDirection = wind_direction;
+        setWindDirections((prev) => {
+          const updated = [...prev, newDirection];
+          return updated.length > 20 ? updated.slice(-20) : updated;
+        });
       } catch (error) {
         // Just log the error, don't display it
         console.error("Error fetching wind data:", error);
@@ -254,6 +350,25 @@ const Home = () => {
     // Clean up interval on unmount
     return () => clearInterval(intervalId);
   }, [dataReceived]);
+
+  // Initial animation on page load
+  useEffect(() => {
+    if (windDirections.length > 0 && !initialAnimationDone) {
+      let index = 0;
+      setIsAnimating(true);
+      const interval = setInterval(() => {
+        setCurrentDirection(windDirections[index]);
+        index++;
+        if (index >= windDirections.length) {
+          clearInterval(interval);
+          setIsAnimating(false);
+          setInitialAnimationDone(true); // Mark animation as done
+        }
+      }, 50); // Adjust speed as needed
+
+      return () => clearInterval(interval);
+    }
+  }, [windDirections, initialAnimationDone]);
 
   // Helper function to convert wind direction in degrees to cardinal direction
   const getCardinalDirection = (degrees: number): string => {
@@ -280,95 +395,65 @@ const Home = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
-      <main className="bg-white dark:bg-gray-800 shadow-xl rounded-lg p-8 max-w-md w-full">
-        <h1 className="text-3xl font-bold text-center mb-8 text-gray-800 dark:text-white">
-          Wind Dashboard
-        </h1>
+    <>
+      {/* SVG overlay as background */}
+      <WindArrow direction={currentDirection} isOpen={windData.isOpen} />
+      {/* Main content stays centered */}
+      <div className="flex flex-col items-center justify-center min-h-screen bg-black p-4 relative z-10">
+        <main className="bg-black shadow-xl rounded-lg p-8 max-w-md w-full">
+          <h1 className="text-3xl font-bold text-center mb-8 text-white">
+            WIND TRUST
+          </h1>
 
-        {windData.loading ? (
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex justify-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          {windData.loading ? (
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex justify-center">
+                <img src="https://em-content.zobj.net/source/apple/419/wind-chime_1f390.png" alt="Wind Chime" className="h-16 w-16" />
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">
+                Loading wind data...
+              </p>
             </div>
-            <p className="text-gray-600 dark:text-gray-400 text-sm">
-              Loading wind data...
-            </p>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center space-y-8">
-            <StatusIndicator isOpen={windData.isOpen} />
+          ) : (
+            <div className="flex flex-col items-center space-y-8">
+              <WindArrow direction={currentDirection} isOpen={windData.isOpen} />
 
-            <WindArrow direction={windData.direction} />
-
-            <div className="text-center space-y-2">
-              <div className="text-xl font-semibold text-gray-700 dark:text-gray-200">
-                Wind Direction: {getCardinalDirection(windData.direction)} (
-                {windData.direction}°)
-              </div>
-              <div className="text-xl font-semibold text-gray-700 dark:text-gray-200">
-                Wind Speed: {windData.speed} mph
-              </div>
+              {joiningWallet && (
+                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md w-full">
+                  <div className="flex items-center gap-3 justify-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-blue-500"></div>
+                    <span className="text-blue-700 dark:text-blue-300 text-sm font-medium">Joining with wallet...</span>
+                  </div>
+                </div>
+              )}
+              
+              {joinError && !joiningWallet && (
+                <div className="mt-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md text-sm w-full">
+                  Error joining: {joinError}
+                </div>
+              )}
+              
+              {joinData && !joiningWallet && (
+                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md w-full">
+                  <h3 className="font-bold text-blue-900 dark:text-blue-300 mb-2">Join Status</h3>
+                  <pre className="text-xs text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 p-3 rounded overflow-auto max-h-[40rem]">
+                    {JSON.stringify(joinData, null, 2)}
+                  </pre>
+                </div>
+              )}
             </div>
+          )}
+        </main>
 
-            {windData.isOpen && (
-              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 w-full">
-                <h3 className="text-center text-gray-700 dark:text-gray-300 mb-4">Wind conditions favorable</h3>
-                
-                <div className="flex flex-col items-center space-y-4">
-                  {/* Wallet Connect */}
-                  <WalletConnect />
-                  
-                  {/* Join Button (only show when wallet is connected) */}
-                  {isConnected && !joinData && !joiningWallet && (
-                    <button
-                      onClick={handleJoin}
-                      className="mt-4 bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-md text-sm font-medium transition-colors"
-                    >
-                      Join with Wallet
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-            
-            {joiningWallet && (
-              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md w-full">
-                <div className="flex items-center gap-3 justify-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-blue-500"></div>
-                  <span className="text-blue-700 dark:text-blue-300 text-sm font-medium">Joining with wallet...</span>
-                </div>
-              </div>
-            )}
-            
-            {joinError && !joiningWallet && (
-              <div className="mt-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md text-sm w-full">
-                Error joining: {joinError}
-              </div>
-            )}
-            
-            {joinData && !joiningWallet && (
-              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md w-full">
-                <h3 className="font-bold text-blue-900 dark:text-blue-300 mb-2">Join Status</h3>
-                <pre className="text-xs text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 p-3 rounded overflow-auto max-h-[40rem]">
-                  {JSON.stringify(joinData, null, 2)}
-                </pre>
-              </div>
-            )}
-          </div>
-        )}
-      </main>
-
-      <footer className="mt-8 text-sm text-gray-500 dark:text-gray-400">
-        {windData.updated ? (
-          <>
-            Last updated: {windData.updated.toLocaleTimeString()}
-          </>
-        ) : (
-          <>Waiting for wind data...</>
-        )}
-      </footer>
-    </div>
+        <footer className="mt-8 text-sm text-gray-500 dark:text-gray-400">
+          {isAnimating ? (
+            <>Last updated: {new Date().toLocaleTimeString()}</>
+          ) : (
+            <>Last updated: {windData.updated?.toLocaleTimeString()}</>
+          )}
+        </footer>
+      </div>
+    </>
   );
 };
 
