@@ -164,28 +164,29 @@ const Home = () => {
           setCurrentWind(data);
         } else {
           // If API fails, use sample current wind data
-          const sampleData: ApiResponse = {
-            wind_direction: Math.round(Math.random() * 360),
-            wind_speed: 5 + Math.random() * 15,
-            azimuth: 45,
-            destination: [37.223194, 38.922325],
-            is_open: Math.random() > 0.5,
-            threshold_percent: 50,
-          };
-          setCurrentWind(sampleData);
+          // const sampleData: ApiResponse = {
+          //   wind_direction: Math.round(Math.random() * 360),
+          //   wind_speed: 5 + Math.random() * 15,
+          //   azimuth: 45,
+          //   destination: [37.223194, 38.922325],
+          //   is_open: Math.random() > 0.5,
+          //   threshold_percent: 50,
+          // };
+          // setCurrentWind(sampleData);
+          throw new Error('Failed to fetch wind data');
         }
       } catch (error) {
         console.error("Error fetching wind data:", error);
         // Use sample data on error
-        const sampleData: ApiResponse = {
-          wind_direction: Math.round(Math.random() * 360),
-          wind_speed: 5 + Math.random() * 15,
-          azimuth: 45,
-          destination: [37.223194, 38.922325],
-          is_open: Math.random() > 0.5,
-          threshold_percent: 50,
-        };
-        setCurrentWind(sampleData);
+        // const sampleData: ApiResponse = {
+        //   wind_direction: Math.round(Math.random() * 360),
+        //   wind_speed: 5 + Math.random() * 15,
+        //   azimuth: 45,
+        //   destination: [37.223194, 38.922325],
+        //   is_open: Math.random() > 0.5,
+        //   threshold_percent: 50,
+        // };
+        // setCurrentWind(sampleData);
       }
     };
 
