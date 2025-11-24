@@ -102,9 +102,9 @@ export const ConcentricCircles = ({
     }
 
     // Calculate the arc sweep
-    let startAngle = thresholdLowerBound;
-    let endAngle = thresholdUpperBound;
-    let sweepFlag = 1; // 1 for clockwise, 0 for counter-clockwise
+    const startAngle = thresholdLowerBound;
+    const endAngle = thresholdUpperBound;
+    const sweepFlag = 1; // 1 for clockwise, 0 for counter-clockwise
 
     // Handle wrap-around case
     if (startAngle > endAngle) {

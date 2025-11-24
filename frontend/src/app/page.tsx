@@ -245,7 +245,7 @@ const Home = () => {
       <div
         className="absolute z-20"
         style={{
-          bottom: "25%", // 1/4 from bottom
+          bottom: "15%", // 15% from bottom
           left: "50%",
           transform: "translateX(-50%)",
         }}
