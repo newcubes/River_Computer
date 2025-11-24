@@ -392,7 +392,19 @@ def join():
                 break
 
         if not json_line:
-            return jsonify({"error": "Failed to parse transaction output", "raw_output": authz_exec_tx_submission}), 500
+            error_line = None
+            for line in lines:
+                line = line.strip()
+                if line.startswith('Error:'):
+                    error_line = line
+                    break
+
+            if not error_line:
+                print("No error line found. Printing full output:")
+                print(authz_exec_tx_submission)
+                return jsonify({"error": "Failed to parse transaction output. See log for details."}), 500
+
+            return jsonify({"error": error_line}), 500
 
         tx_result = json.loads(json_line)
 
