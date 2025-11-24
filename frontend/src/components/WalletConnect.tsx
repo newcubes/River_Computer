@@ -1,15 +1,18 @@
 "use client";
 
+import { neutron } from "@/app/page";
 import { useAccount, useConnect, useDisconnect } from "graz";
 
 export const WalletConnect = () => {
   const { connect, status, error: connectError } = useConnect();
-  const { data: account, isConnected } = useAccount();
+  const { data: accounts, isConnected } = useAccount({
+    chainId: [neutron.chainId],
+  });
+  const account = accounts?.[neutron.chainId];
   const { disconnect } = useDisconnect();
-  
-  // Handle connect to neutron-1
+
   const handleConnect = () => {
-    connect({ chainId: "neutron-1" });
+    connect({ chainId: neutron.chainId });
   };
 
   // Handle disconnect
@@ -20,7 +23,9 @@ export const WalletConnect = () => {
   // Format address for display
   const formatAddress = (address: string) => {
     if (!address) return "";
-    return `${address.substring(0, 8)}...${address.substring(address.length - 6)}`;
+    return `${address.substring(0, 8)}...${address.substring(
+      address.length - 6
+    )}`;
   };
 
   return (
@@ -60,4 +65,4 @@ export const WalletConnect = () => {
       )}
     </div>
   );
-}; 
+};

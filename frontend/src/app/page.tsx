@@ -15,7 +15,7 @@ if (!API_URL) {
 // Create a client
 const queryClient = new QueryClient();
 
-const neutron: ChainInfo = {
+export const neutron: ChainInfo = {
   chainId: "neutron-1",
   chainName: "Neutron",
   rpc: "https://rpc.cosmos.directory/neutron",
@@ -143,7 +143,7 @@ const Home = () => {
       const baseDirection = (i * 137.5) % 360; // Golden angle for good distribution
       const noise = (Math.random() - 0.5) * 30; // ±15 degrees of noise
       const windDirection = (baseDirection + noise + 360) % 360;
-      
+
       return {
         timestamp: new Date(now.getTime() - i * 60000).toISOString(), // 1 min apart
         wind_direction: Math.round(windDirection),
@@ -162,7 +162,7 @@ const Home = () => {
         if (response.ok) {
           const data = (await response.json()) as HistoryResponse;
           const readings = data.readings || [];
-          
+
           // If we have real data, use it; otherwise generate sample data
           if (readings.length > 0) {
             setWindHistory(readings);
@@ -170,7 +170,7 @@ const Home = () => {
             // Generate 150 sample readings with noise
             setWindHistory(generateSampleWindData(150));
           }
-          
+
           // Start animation if we haven't animated yet
           if (!hasAnimated) {
             setIsAnimating(true);
@@ -270,10 +270,11 @@ const Home = () => {
       </div>
 
       {/* Center Arrow - vertically and horizontally centered */}
-      <div className="absolute z-10" style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}>
-        {currentWind && (
-          <WindArrow direction={currentWind.wind_direction} />
-        )}
+      <div
+        className="absolute z-10"
+        style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
+      >
+        {currentWind && <WindArrow direction={currentWind.wind_direction} />}
       </div>
 
       {/* Wallet Connect Button - horizontal center, vertical at 1/4 from bottom */}
