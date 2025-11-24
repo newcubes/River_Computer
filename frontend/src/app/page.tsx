@@ -93,23 +93,23 @@ const Home = () => {
   }, []);
 
   // Generate sample wind data (noise) for testing when API is unavailable
-  const generateSampleWindData = (count: number): WindReading[] => {
-    const now = new Date();
-    return Array.from({ length: count }, (_, i) => {
-      // Generate random wind directions (0-360 degrees)
-      // Add some variation so ticks don't all point the same way
-      const baseDirection = (i * 137.5) % 360; // Golden angle for good distribution
-      const noise = (Math.random() - 0.5) * 30; // ±15 degrees of noise
-      const windDirection = (baseDirection + noise + 360) % 360;
+  // const generateSampleWindData = (count: number): WindReading[] => {
+  //   const now = new Date();
+  //   return Array.from({ length: count }, (_, i) => {
+  //     // Generate random wind directions (0-360 degrees)
+  //     // Add some variation so ticks don't all point the same way
+  //     const baseDirection = (i * 137.5) % 360; // Golden angle for good distribution
+  //     const noise = (Math.random() - 0.5) * 30; // ±15 degrees of noise
+  //     const windDirection = (baseDirection + noise + 360) % 360;
 
-      return {
-        timestamp: new Date(now.getTime() - i * 60000).toISOString(), // 1 min apart
-        wind_direction: Math.round(windDirection),
-        wind_speed: 5 + Math.random() * 15, // 5-20 mph
-        is_open: Math.random() > 0.5,
-      };
-    });
-  };
+  //     return {
+  //       timestamp: new Date(now.getTime() - i * 60000).toISOString(), // 1 min apart
+  //       wind_direction: Math.round(windDirection),
+  //       wind_speed: 5 + Math.random() * 15, // 5-20 mph
+  //       is_open: Math.random() > 0.5,
+  //     };
+  //   });
+  // };
 
   // Fetch historical wind data on mount
   useEffect(() => {
@@ -126,7 +126,7 @@ const Home = () => {
             setWindHistory(readings);
           } else {
             // Generate 150 sample readings with noise
-            setWindHistory(generateSampleWindData(150));
+            // setWindHistory(generateSampleWindData(150));
           }
 
           // Start animation if we haven't animated yet
@@ -135,15 +135,15 @@ const Home = () => {
           }
         } else {
           // API failed, use sample data
-          setWindHistory(generateSampleWindData(150));
-          if (!hasAnimated) {
-            setIsAnimating(true);
-          }
+          // setWindHistory(generateSampleWindData(150));
+          // if (!hasAnimated) {
+          //   setIsAnimating(true);
+          // }
         }
       } catch (error) {
         console.error("Error fetching wind history:", error);
         // On error, use sample data so we can still see the visualization
-        setWindHistory(generateSampleWindData(150));
+        // setWindHistory(generateSampleWindData(150));
         if (!hasAnimated) {
           setIsAnimating(true);
         }
@@ -200,7 +200,8 @@ const Home = () => {
   };
 
   // Show wallet connect only if wind is "open"
-  const showWalletConnect = currentWind?.is_open ?? false;
+  // const showWalletConnect = currentWind?.is_open ?? false;
+  const showWalletConnect = true;
 
   return (
     <div
