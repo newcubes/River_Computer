@@ -91,22 +91,16 @@ export const ConcentricCircles = ({
       {circles.map(({ radius, index, reading }) => {
         const isAnimated = animatedIndices.has(index);
         const windDirection = reading?.wind_direction ?? 0;
-        
-        // Start at 12 o'clock (0°), animate to actual direction
-        // Use a smooth transition for the angle
-        const targetAngle = windDirection;
-        const currentAngle = isAnimated ? targetAngle : 0;
-        
-        // Convert degrees to radians, adjust for SVG coordinate system (0° = right, 90° = down)
-        // We want 0° = up (12 o'clock), so subtract 90
-        const angleRad = ((currentAngle - 90) * Math.PI) / 180;
-        
-        // Calculate tick mark endpoints
+
+        // Use shortest rotation path: if angle > 180°, rotate negative instead
+        const rotationAngle = windDirection > 180 ? windDirection - 360 : windDirection;
+
+        // Calculate tick mark position (pointing straight up at 12 o'clock)
         const tickLength = radius * 0.02; // 2% of radius
-        const startX = centerX + radius * Math.cos(angleRad);
-        const startY = centerY + radius * Math.sin(angleRad);
-        const endX = centerX + (radius + tickLength) * Math.cos(angleRad);
-        const endY = centerY + (radius + tickLength) * Math.sin(angleRad);
+        const startX = centerX;
+        const startY = centerY - radius;
+        const endX = centerX;
+        const endY = centerY - radius - tickLength;
 
         return (
           <g key={index}>
@@ -119,7 +113,7 @@ export const ConcentricCircles = ({
               stroke="rgba(255, 255, 255, 0.1)"
               strokeWidth="0.5"
             />
-            {/* Tick mark */}
+            {/* Tick mark - using transform rotation for smooth animation */}
             <line
               x1={startX}
               y1={startY}
@@ -129,7 +123,11 @@ export const ConcentricCircles = ({
               strokeWidth="1"
               opacity={isAnimated ? 1 : 0.3}
               style={{
-                transition: isAnimated ? "opacity 0.3s ease-out" : "none",
+                transformOrigin: `${centerX}px ${centerY}px`,
+                transform: `rotate(${isAnimated ? rotationAngle : 0}deg)`,
+                transition: isAnimated
+                  ? "opacity 0.3s ease-out, transform 0.3s ease-out"
+                  : "none",
               }}
             />
           </g>

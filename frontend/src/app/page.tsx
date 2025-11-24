@@ -201,8 +201,8 @@ const Home = () => {
   };
 
   // Show wallet connect only if wind is "open"
-  // const showWalletConnect = currentWind?.is_open ?? false;
-  const showWalletConnect = true;
+  const showWalletConnect = currentWind?.is_open ?? false;
+  // const showWalletConnect = true;
 
   return (
     <div
@@ -237,19 +237,26 @@ const Home = () => {
         {currentWind && <WindArrow direction={currentWind.wind_direction} />}
       </div>
 
-      {/* Wallet Connect Button - horizontal center, vertical at 1/4 from bottom */}
-      {showWalletConnect && (
-        <div
-          className="absolute z-20"
-          style={{
-            bottom: "25%", // 1/4 from bottom
-            left: "50%",
-            transform: "translateX(-50%)",
-          }}
-        >
+      {/* Wallet Connect Button or Error Message - horizontal center, vertical at 1/4 from bottom */}
+      <div
+        className="absolute z-20"
+        style={{
+          bottom: "25%", // 1/4 from bottom
+          left: "50%",
+          transform: "translateX(-50%)",
+        }}
+      >
+        {showWalletConnect ? (
           <WalletConnect />
-        </div>
-      )}
+        ) : (
+          <div className="text-white text-xl font-light tracking-wide text-center">
+            Cannot Connect to Wind Trust
+            <div className="text-sm text-white/60 mt-2">
+              The wind is not open right now
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -49,11 +49,11 @@ export const WalletConnect = () => {
             onClick={handleConnect}
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer"
           >
-            Connect Wallet
+            Connect to Wind Trust
           </button>
-          {status !== "idle" && status !== "error" && (
+          {status === "pending" && (
             <div className="text-center text-xs text-gray-600 dark:text-gray-400">
-              {status === "pending" ? "Connecting..." : status}
+              Connecting...
             </div>
           )}
           {connectError && (
