@@ -135,23 +135,61 @@ def get_wind_data_openweather():
     """Get wind data from OpenWeatherMap API"""
     api_key = os.getenv('OPENWEATHERMAP_API_KEY')
     lat, lon = 40.687668, -73.955505  # Brooklyn coordinates
-    
+
     url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric"
     response = requests.get(url, timeout=10)
     response.raise_for_status()
     data = response.json()
-    
+
     wind_data = data.get('wind', {})
     wind_direction = wind_data.get('deg', 'N/A')  # Already in degrees 0-360
     wind_speed_ms = wind_data.get('speed', 'N/A')  # m/s
-    
+
     # Convert m/s to mph
     if isinstance(wind_speed_ms, (int, float)):
         wind_speed = wind_speed_ms * 2.237  # Convert m/s to mph
     else:
         wind_speed = 'N/A'
-    
+
     return wind_direction, wind_speed
+
+def calculate_wind_status(wind_direction):
+    """
+    Calculate azimuth, bounds, and whether wind is open for a given wind direction.
+
+    Returns:
+        dict with keys: azimuth, threshold_percent, destination_coords,
+                       azimuth_lower_bound, azimuth_upper_bound, is_open
+    """
+    config = get_config()
+    threshold_percent = float(config['azimuth_threshold_percent'])
+    destination_coords = [float(coord) for coord in config['destination_coordinates'].split(',')]
+
+    # from position of device to desired destination
+    device_coords = [40.687668, -73.955505]
+    azimuth = (Geodesic.WGS84.Inverse(*device_coords, *destination_coords)['azi1'] + 360) % 360
+
+    threshold_delta = threshold_percent / 100 * 90
+    azimuth_lower_bound = (azimuth - threshold_delta + 360) % 360
+    azimuth_upper_bound = (azimuth + threshold_delta) % 360
+
+    # Check if wind direction is within the threshold range
+    # Handle wrap-around at 0/360 degrees
+    if azimuth_lower_bound > azimuth_upper_bound:
+        # Range wraps around 0/360
+        is_open = wind_direction >= azimuth_lower_bound or wind_direction <= azimuth_upper_bound
+    else:
+        # Normal range
+        is_open = azimuth_lower_bound <= wind_direction <= azimuth_upper_bound
+
+    return {
+        'azimuth': azimuth,
+        'threshold_percent': threshold_percent,
+        'destination_coords': destination_coords,
+        'azimuth_lower_bound': azimuth_lower_bound,
+        'azimuth_upper_bound': azimuth_upper_bound,
+        'is_open': is_open
+    }
 
 @app.route('/_next/<path:path>')
 def next_static(path):
@@ -184,37 +222,19 @@ def get_wind_data():
             if wind_data_cache:
                 return jsonify(wind_data_cache), 200
             return jsonify({"error": "Invalid wind direction data from API"}), 500
-        
-        config = get_config()
-        threshold_percent = float(config['azimuth_threshold_percent'])
-        destination_coords = [float(coord) for coord in config['destination_coordinates'].split(',')]
 
-        # from position of device to desired destination
-        device_coords = [40.687668, -73.955505]
-        azimuth = (Geodesic.WGS84.Inverse(*device_coords, *destination_coords)['azi1'] + 360) % 360
-
-        threshold_delta = threshold_percent / 100 * 90
-        azimuth_lower_bound = (azimuth - threshold_delta + 360) % 360
-        azimuth_upper_bound = (azimuth + threshold_delta) % 360
-        
-        # Check if wind direction is within the threshold range
-        # Handle wrap-around at 0/360 degrees
-        if azimuth_lower_bound > azimuth_upper_bound:
-            # Range wraps around 0/360
-            is_open = wind_direction >= azimuth_lower_bound or wind_direction <= azimuth_upper_bound
-        else:
-            # Normal range
-            is_open = azimuth_lower_bound <= wind_direction <= azimuth_upper_bound
+        # Calculate wind status using shared logic
+        wind_status = calculate_wind_status(wind_direction)
 
         response_data = {
             "wind_direction": wind_direction,
             "wind_speed": wind_speed,
-            "destination": destination_coords,
-            "azimuth": azimuth,
-            "threshold_percent": threshold_percent,
-            "threshold_lower_bound": azimuth_lower_bound,
-            "threshold_upper_bound": azimuth_upper_bound,
-            "is_open": is_open,
+            "destination": wind_status['destination_coords'],
+            "azimuth": wind_status['azimuth'],
+            "threshold_percent": wind_status['threshold_percent'],
+            "threshold_lower_bound": wind_status['azimuth_lower_bound'],
+            "threshold_upper_bound": wind_status['azimuth_upper_bound'],
+            "is_open": wind_status['is_open'],
             "api_source": api_source  # Include which API was used for debugging
         }
         
@@ -224,12 +244,12 @@ def get_wind_data():
             # Check if this reading is different from the last one
             if len(wind_history) == 0:
                 # First reading, always add
-                add_wind_reading(wind_direction, wind_speed, is_open)
+                add_wind_reading(wind_direction, wind_speed, wind_status['is_open'])
             else:
                 last_reading = wind_history[-1]
                 # Only add if wind direction changed (allowing for small rounding differences)
                 if abs(last_reading['wind_direction'] - wind_direction) > 0.5:
-                    add_wind_reading(wind_direction, wind_speed, is_open)
+                    add_wind_reading(wind_direction, wind_speed, wind_status['is_open'])
         
         # Update cache with the latest successful data
         wind_data_cache = response_data
@@ -282,6 +302,41 @@ def is_member_route():
 
     return jsonify({"is_member": is_member(address)})
 
+def check_wind_is_open():
+    """Check if the wind is currently open"""
+    global wind_data_cache
+
+    api_source = os.getenv('WIND_API_SOURCE', 'openweather').lower()
+
+    try:
+        # Get wind data from the selected API
+        if api_source == 'ambient':
+            wind_direction, wind_speed = get_wind_data_ambient()
+        else:  # default to openweather
+            wind_direction, wind_speed = get_wind_data_openweather()
+
+        # If we didn't get valid data, use cache
+        if wind_direction == 'N/A' or wind_direction is None:
+            if wind_data_cache:
+                return wind_data_cache.get('is_open', False)
+            return False
+
+        # Only proceed if we have valid wind direction data
+        if not isinstance(wind_direction, (int, float)) or wind_direction < 0 or wind_direction > 360:
+            if wind_data_cache:
+                return wind_data_cache.get('is_open', False)
+            return False
+
+        # Calculate wind status using shared logic
+        wind_status = calculate_wind_status(wind_direction)
+        return wind_status['is_open']
+
+    except Exception as e:
+        print(f"Error checking wind status: {e}")
+        if wind_data_cache:
+            return wind_data_cache.get('is_open', False)
+        return False
+
 @app.route('/api/join', methods=['POST'])
 @cross_origin()
 def join():
@@ -294,6 +349,10 @@ def join():
     # check if already a member
     if is_member(address):
         return jsonify({"error": "Already a member"}), 400
+
+    # verify wind is open
+    if not check_wind_is_open():
+        return jsonify({"error": "The wind is not open right now"}), 403
 
     # authz exec via wind trust
     add_member_payload = json.dumps({
@@ -319,8 +378,9 @@ def join():
         fee_grant_tx['body']['messages'][0]
     )
 
-    # for now, don't execute
-    return jsonify(full_tx_pre_authz)
+    authz_exec_tx_submission = os.popen(f"echo '{json.dumps(full_tx_pre_authz)}' | {neutrond_bin} tx authz exec /dev/stdin --from wind --fee-granter {river_computer_dao_contract} --gas auto --gas-prices 0.01untrn --gas-adjustment 1.5 --broadcast-mode sync --output json --yes 2>&1").read()
+
+    return jsonify(authz_exec_tx_submission)
 
 # Serve Next.js static files
 @app.route('/', defaults={'path': ''})
