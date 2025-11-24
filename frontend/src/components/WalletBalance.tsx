@@ -11,6 +11,7 @@ export const WalletBalance = () => {
   const { data: balances, isLoading } = useBalances({
     chainId: neutron.chainId,
     bech32Address: account?.bech32Address || '',
+    enabled: !!account?.bech32Address,
   });
 
   if (!account || !balances) {
