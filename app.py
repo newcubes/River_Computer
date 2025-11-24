@@ -53,15 +53,23 @@ def save_wind_history():
         print(f"Error saving wind history: {e}")
 
 def add_wind_reading(wind_direction, wind_speed, is_open):
-    """Add a new wind reading to history"""
-    reading = {
-        'timestamp': datetime.utcnow().isoformat(),
-        'wind_direction': wind_direction,
-        'wind_speed': wind_speed,
-        'is_open': is_open
+    """Adds a new wind reading to history, with deduplication."""
+    global wind_history
+    timestamp = datetime.utcnow().isoformat()
+    new_reading = {
+        "timestamp": timestamp,
+        "wind_direction": wind_direction,
+        "wind_speed": wind_speed,
+        "is_open": is_open
     }
-    wind_history.append(reading)
-    save_wind_history()
+
+    # Deduplication: only add if direction changes significantly (> 0.5 degrees)
+    if not wind_history or abs(wind_history[-1]['wind_direction'] - wind_direction) > 0.5:
+        wind_history.append(new_reading)
+        save_wind_history()
+        print(f"Recorded new wind reading: {wind_direction}° at {timestamp}")
+    else:
+        print(f"Skipping recording (direction unchanged): {wind_direction}° at {timestamp}")
 
 # Load history on startup
 load_wind_history()
