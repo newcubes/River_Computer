@@ -7,6 +7,11 @@ import { GrazProvider, GrazProviderProps, useAccount } from "graz";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { ChainInfo } from "@keplr-wallet/types";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+if (!API_URL) {
+  throw new Error("NEXT_PUBLIC_API_URL is not set");
+}
+
 // Create a client
 const queryClient = new QueryClient();
 
@@ -152,9 +157,7 @@ const Home = () => {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        // Use localhost:8000 for local development
-        const apiUrl = "http://localhost:8000";
-        const response = await fetch(`${apiUrl}/api/wind/history`);
+        const response = await fetch(`${API_URL}/api/wind/history`);
 
         if (response.ok) {
           const data = (await response.json()) as HistoryResponse;
@@ -196,9 +199,7 @@ const Home = () => {
   useEffect(() => {
     const fetchWindData = async () => {
       try {
-        // Use localhost:8000 for local development
-        const apiUrl = "http://localhost:8000";
-        const response = await fetch(`${apiUrl}/api/wind`);
+        const response = await fetch(`${API_URL}/api/wind`);
 
         if (response.ok) {
           const data = (await response.json()) as ApiResponse;

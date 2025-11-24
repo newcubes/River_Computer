@@ -20,11 +20,15 @@ A Next.js application that displays the current wind direction and speed with Co
    ```bash
    npm install
    ```
-3. Run the development server:
+3. Set up the environment variables:
+   ```bash
+   cp .env.example .env.local
+   ```
+4. Run the development server:
    ```bash
    npm run dev
    ```
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
 ## Technical Details
 
