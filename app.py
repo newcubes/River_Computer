@@ -9,6 +9,8 @@ from collections import deque
 from datetime import datetime
 from dotenv import load_dotenv
 from geographiclib.geodesic import Geodesic
+from cosmpy.aerial.client import LedgerClient, NetworkConfig
+from cosmpy.aerial.contract import LedgerContract
 
 load_dotenv()
 
@@ -25,12 +27,43 @@ WIND_HISTORY_FILE = 'wind_history.json'
 WIND_HISTORY_MAX = 150
 wind_history = deque(maxlen=WIND_HISTORY_MAX)
 
+neutrond_bin = "/home/river/.local/bin/neutrond"
 wind_trust_dao_contract = "neutron1hvdx9p56hz8m2604ls8ss3j4u8nxx8ju6kjvf7hewf7p87cksxpq3pllfs"
+wind_trust_contract_cw4 = "neutron1hstf985wqeqgxtg99e8pm99gzmguxwyzywunk5ntx3ksjejccwcqsdwwjf"
+river_computer_dao_contract = "neutron15078ks644a6pxmknyhqkkpgackggxcm47zgkzu4lkwcnwp9gwh6q6xmegw"
+
+# Initialize CosmPy client for Neutron
+neutron_network = NetworkConfig(
+    chain_id="neutron-1",
+    url="rest+https://neutron-rest.publicnode.com",
+    fee_minimum_gas_price=0.025,
+    fee_denomination="untrn",
+    staking_denomination="untrn",
+)
+ledger_client = LedgerClient(neutron_network)
+
+def query_contract(contract_address, query):
+    """Query a contract"""
+    contract = LedgerContract(
+        path=None,
+        client=ledger_client,
+        address=contract_address
+    )
+
+    return contract.query(query)
 
 def get_config():
-    res = requests.get(f"https://indexer.daodao.zone/neutron-1/contract/{wind_trust_dao_contract}/daoCore/listItems")
-    res.raise_for_status()
-    return dict(res.json())
+    """Get configuration values from the smart contract"""
+    config = {}
+
+    # Query each configuration key
+    keys = ['azimuth_threshold_percent', 'destination_coordinates']
+    for key in keys:
+        value = query_contract(wind_trust_dao_contract, {"get_item": {"key": key}}).get("item")
+        if value is not None:
+            config[key] = value
+
+    return config
 
 def load_wind_history():
     """Load wind history from JSON file"""
@@ -222,20 +255,45 @@ def get_wind_history():
         "readings": history_list
     })
 
-@app.route('/api/join', methods=['POST'])
-@cross_origin()
-def join():
-    address = request.get_json(force=True)['address']
+def validate_address(address):
+    if address is None:
+        raise Exception("Address is required")
+
     try:
         hrp, data = bech32.bech32_decode(address)
         if hrp is None or hrp != "neutron" or data is None:
             raise Exception("Invalid address")
     except Exception as e:
+        raise Exception("Invalid address")
+    return True
+
+def is_member(address):
+    existing_member_weight = query_contract(wind_trust_contract_cw4, {"member": {"addr": address}}).get("weight")
+    return existing_member_weight is not None and existing_member_weight > 0
+
+@app.route('/api/is-member', methods=['GET'])
+@cross_origin()
+def is_member_route():
+    address = request.args.get('address')
+    try:
+        validate_address(address)
+    except Exception:
         return jsonify({"error": "Invalid address"}), 401
 
-    neutrond_bin = "/home/river/.local/bin/neutrond"
-    wind_trust_contract_cw4 = "neutron1hstf985wqeqgxtg99e8pm99gzmguxwyzywunk5ntx3ksjejccwcqsdwwjf"
-    river_computer_dao_contract = "neutron15078ks644a6pxmknyhqkkpgackggxcm47zgkzu4lkwcnwp9gwh6q6xmegw"
+    return jsonify({"is_member": is_member(address)})
+
+@app.route('/api/join', methods=['POST'])
+@cross_origin()
+def join():
+    address = request.get_json(force=True)['address']
+    try:
+        validate_address(address)
+    except Exception:
+        return jsonify({"error": "Invalid address"}), 401
+
+    # check if already a member
+    if is_member(address):
+        return jsonify({"error": "Already a member"}), 400
 
     # authz exec via wind trust
     add_member_payload = json.dumps({
