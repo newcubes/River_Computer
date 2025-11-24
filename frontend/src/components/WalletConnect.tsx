@@ -113,8 +113,18 @@ export const WalletConnect = () => {
               Checking membership...
             </div>
           ) : isMember === true ? (
-            <div className="text-green-400 text-sm font-medium">
-              ✓ Member of Wind Trust
+            <div className="flex flex-col items-center gap-2">
+              <div className="text-green-400 text-sm font-medium">
+                ✓ Member of Wind Trust
+              </div>
+              <a
+                href="https://dao.daodao.zone/neutron1hvdx9p56hz8m2604ls8ss3j4u8nxx8ju6kjvf7hewf7p87cksxpq3pllfs/members"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/60 hover:text-white text-xs"
+              >
+                View DAO Members →
+              </a>
             </div>
           ) : isMember === false ? (
             <div className="flex flex-col items-center gap-2">
