@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { WalletConnect } from "../components/WalletConnect";
 import { ConcentricCircles } from "../components/ConcentricCircles";
-import { GrazProvider, GrazProviderProps, useAccount } from "graz";
+import { GrazProvider, GrazProviderProps } from "graz";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { ChainInfo } from "@keplr-wallet/types";
 
@@ -111,7 +111,7 @@ const WindArrow = ({ direction }: { direction: number }) => {
 };
 
 const Home = () => {
-  const { data: account, isConnected } = useAccount();
+  // const { data: account, isConnected } = useAccount();
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState(600);
   const [currentWind, setCurrentWind] = useState<ApiResponse | null>(null);
