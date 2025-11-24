@@ -380,7 +380,38 @@ def join():
 
     authz_exec_tx_submission = os.popen(f"echo '{json.dumps(full_tx_pre_authz)}' | {neutrond_bin} tx authz exec /dev/stdin --from wind --fee-granter {river_computer_dao_contract} --gas auto --gas-prices 0.01untrn --gas-adjustment 1.5 --broadcast-mode sync --output json --yes 2>&1").read()
 
-    return jsonify(authz_exec_tx_submission)
+    # Parse the output - it contains "gas estimate: XXXXX\n{json...}"
+    try:
+        # Find the JSON part (after the gas estimate line)
+        lines = authz_exec_tx_submission.strip().split('\n')
+        json_line = None
+        for line in lines:
+            line = line.strip()
+            if line.startswith('{'):
+                json_line = line
+                break
+
+        if not json_line:
+            return jsonify({"error": "Failed to parse transaction output", "raw_output": authz_exec_tx_submission}), 500
+
+        tx_result = json.loads(json_line)
+
+        # Check if transaction was successful (code 0)
+        if tx_result.get('code') == 0:
+            txhash = tx_result.get('txhash')
+            if txhash:
+                return jsonify({"txhash": txhash})
+            else:
+                return jsonify({"error": "No txhash found", "result": tx_result}), 500
+        else:
+            # Transaction failed
+            error_msg = tx_result.get('raw_log', 'Transaction failed')
+            return jsonify({"error": error_msg, "code": tx_result.get('code')}), 500
+
+    except json.JSONDecodeError as e:
+        return jsonify({"error": "Failed to parse transaction JSON", "raw_output": authz_exec_tx_submission}), 500
+    except Exception as e:
+        return jsonify({"error": f"Error processing transaction: {str(e)}", "raw_output": authz_exec_tx_submission}), 500
 
 # Serve Next.js static files
 @app.route('/', defaults={'path': ''})
