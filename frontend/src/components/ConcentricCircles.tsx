@@ -14,6 +14,8 @@ interface ConcentricCirclesProps {
   containerSize: number;
   isAnimating: boolean;
   onAnimationComplete: () => void;
+  thresholdLowerBound?: number;
+  thresholdUpperBound?: number;
 }
 
 export const ConcentricCircles = ({
@@ -21,6 +23,8 @@ export const ConcentricCircles = ({
   containerSize,
   isAnimating,
   onAnimationComplete,
+  thresholdLowerBound,
+  thresholdUpperBound,
 }: ConcentricCirclesProps) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [animatedIndices, setAnimatedIndices] = useState<Set<number>>(new Set());
@@ -73,6 +77,82 @@ export const ConcentricCircles = ({
 
   const centerX = containerSize / 2;
   const centerY = containerSize / 2;
+  
+  // Calculate the smallest circle radius (innermost circle)
+  const smallestRadius = PADDING + RADIUS_STEP;
+
+  // Helper function to convert degrees to radians
+  const degToRad = (deg: number) => (deg * Math.PI) / 180;
+
+  // Helper function to get point on circle at given angle
+  const getPointOnCircle = (angle: number, radius: number) => {
+    // Convert angle: 0° = up (12 o'clock), adjust for SVG coordinate system
+    const adjustedAngle = angle - 90; // 0° becomes -90° in SVG (pointing up)
+    const rad = degToRad(adjustedAngle);
+    return {
+      x: centerX + radius * Math.cos(rad),
+      y: centerY + radius * Math.sin(rad),
+    };
+  };
+
+  // Generate arc path for threshold range
+  const getThresholdArcPath = () => {
+    if (thresholdLowerBound === undefined || thresholdUpperBound === undefined) {
+      return null;
+    }
+
+    // Calculate the arc sweep
+    let startAngle = thresholdLowerBound;
+    let endAngle = thresholdUpperBound;
+    let sweepFlag = 1; // 1 for clockwise, 0 for counter-clockwise
+
+    // Handle wrap-around case
+    if (startAngle > endAngle) {
+      // Range wraps around 0/360
+      // We'll draw two arcs: from startAngle to 360, and from 0 to endAngle
+      const startPoint1 = getPointOnCircle(startAngle, smallestRadius);
+      const endPoint1 = getPointOnCircle(360, smallestRadius);
+      const startPoint2 = getPointOnCircle(0, smallestRadius);
+      const endPoint2 = getPointOnCircle(endAngle, smallestRadius);
+      
+      const sweepAngle1 = 360 - startAngle;
+      const sweepAngle2 = endAngle;
+      
+      return (
+        <>
+          <path
+            d={`M ${startPoint1.x} ${startPoint1.y} A ${smallestRadius} ${smallestRadius} 0 ${sweepAngle1 > 180 ? 1 : 0} ${sweepFlag} ${endPoint1.x} ${endPoint1.y}`}
+            fill="none"
+            stroke="rgba(255, 255, 255, 0.6)"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+          <path
+            d={`M ${startPoint2.x} ${startPoint2.y} A ${smallestRadius} ${smallestRadius} 0 ${sweepAngle2 > 180 ? 1 : 0} ${sweepFlag} ${endPoint2.x} ${endPoint2.y}`}
+            fill="none"
+            stroke="rgba(255, 255, 255, 0.6)"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+        </>
+      );
+    } else {
+      // Normal range (no wrap-around)
+      const startPoint = getPointOnCircle(startAngle, smallestRadius);
+      const endPoint = getPointOnCircle(endAngle, smallestRadius);
+      const sweepAngle = endAngle - startAngle;
+      
+      return (
+        <path
+          d={`M ${startPoint.x} ${startPoint.y} A ${smallestRadius} ${smallestRadius} 0 ${sweepAngle > 180 ? 1 : 0} ${sweepFlag} ${endPoint.x} ${endPoint.y}`}
+          fill="none"
+          stroke="rgba(255, 255, 255, 0.6)"
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
+      );
+    }
+  };
 
   return (
     <svg
@@ -87,6 +167,9 @@ export const ConcentricCircles = ({
         transform: "translate(-50%, -50%)",
       }}
     >
+      {/* Threshold arc segment on smallest circle */}
+      {getThresholdArcPath()}
+      
       {/* Render circles and tick marks */}
       {circles.map(({ radius, index, reading }) => {
         const isAnimated = animatedIndices.has(index);

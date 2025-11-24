@@ -28,6 +28,8 @@ interface ApiResponse {
   destination: [number, number];
   is_open: boolean;
   threshold_percent: number;
+  threshold_lower_bound?: number;
+  threshold_upper_bound?: number;
   api_source?: string;
 }
 
@@ -215,6 +217,8 @@ const Home = () => {
         containerSize={containerSize}
         isAnimating={isAnimating}
         onAnimationComplete={handleAnimationComplete}
+        thresholdLowerBound={currentWind?.threshold_lower_bound}
+        thresholdUpperBound={currentWind?.threshold_upper_bound}
       />
 
       {/* "wind trust" text - horizontal center, vertical at 3/4 from top */}

@@ -161,9 +161,17 @@ def get_wind_data():
         azimuth = (Geodesic.WGS84.Inverse(*device_coords, *destination_coords)['azi1'] + 360) % 360
 
         threshold_delta = threshold_percent / 100 * 90
-        azimuth_lower_bound = azimuth - threshold_delta + threshold_delta
-        azimuth_upper_bound = azimuth + threshold_delta + threshold_delta
-        is_open = azimuth_lower_bound <= wind_direction + threshold_delta and azimuth_upper_bound >= wind_direction + threshold_delta
+        azimuth_lower_bound = (azimuth - threshold_delta + 360) % 360
+        azimuth_upper_bound = (azimuth + threshold_delta) % 360
+        
+        # Check if wind direction is within the threshold range
+        # Handle wrap-around at 0/360 degrees
+        if azimuth_lower_bound > azimuth_upper_bound:
+            # Range wraps around 0/360
+            is_open = wind_direction >= azimuth_lower_bound or wind_direction <= azimuth_upper_bound
+        else:
+            # Normal range
+            is_open = azimuth_lower_bound <= wind_direction <= azimuth_upper_bound
 
         response_data = {
             "wind_direction": wind_direction,
@@ -171,6 +179,8 @@ def get_wind_data():
             "destination": destination_coords,
             "azimuth": azimuth,
             "threshold_percent": threshold_percent,
+            "threshold_lower_bound": azimuth_lower_bound,
+            "threshold_upper_bound": azimuth_upper_bound,
             "is_open": is_open,
             "api_source": api_source  # Include which API was used for debugging
         }
