@@ -5,52 +5,10 @@ import { WalletConnect } from "../components/WalletConnect";
 import { ConcentricCircles } from "../components/ConcentricCircles";
 import { GrazProvider, GrazProviderProps } from "graz";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
-import { ChainInfo } from "@keplr-wallet/types";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-if (!API_URL) {
-  throw new Error("NEXT_PUBLIC_API_URL is not set");
-}
+import { API_URL, neutron } from "@/lib/constants";
 
 // Create a client
 const queryClient = new QueryClient();
-
-export const neutron: ChainInfo = {
-  chainId: "neutron-1",
-  chainName: "Neutron",
-  rpc: "https://rpc.cosmos.directory/neutron",
-  rest: "https://rest.cosmos.directory/neutron",
-  bip44: {
-    coinType: 118,
-  },
-  bech32Config: {
-    bech32PrefixAccAddr: "neutron",
-    bech32PrefixAccPub: "neutronpub",
-    bech32PrefixValAddr: "neutronvaloper",
-    bech32PrefixValPub: "neutronvaloperpub",
-    bech32PrefixConsAddr: "neutronvalcons",
-    bech32PrefixConsPub: "neutronvalconspub",
-  },
-  currencies: [
-    {
-      coinDenom: "NTRN",
-      coinMinimalDenom: "untrn",
-      coinDecimals: 6,
-    },
-  ],
-  feeCurrencies: [
-    {
-      coinDenom: "NTRN",
-      coinMinimalDenom: "untrn",
-      coinDecimals: 6,
-    },
-  ],
-  stakeCurrency: {
-    coinDenom: "NTRN",
-    coinMinimalDenom: "untrn",
-    coinDecimals: 6,
-  },
-};
 
 const grazOptions: GrazProviderProps["grazOptions"] = {
   chains: [neutron],

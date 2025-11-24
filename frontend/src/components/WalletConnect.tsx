@@ -1,6 +1,6 @@
 "use client";
 
-import { neutron } from "@/app/page";
+import { neutron } from "@/lib/constants";
 import { useAccount, useConnect, useDisconnect } from "graz";
 
 export const WalletConnect = () => {
